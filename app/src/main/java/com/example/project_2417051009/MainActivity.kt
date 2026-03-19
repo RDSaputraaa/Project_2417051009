@@ -11,11 +11,15 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -50,33 +54,71 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MusicListScreen(modifier: Modifier = Modifier) {
+    var currentlyPlayingId by remember { mutableStateOf<Int?>(null) }
+    var favoriteIds by remember { mutableStateOf(setOf<Int>()) }
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp)
     ) {
         item {
-            Text(
-                text = "Pilih suara alam favoritmu:",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(vertical = 4.dp)
-            )
+            Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                Text(
+                    text = "Pilih suara alam favoritmu:",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                if (currentlyPlayingId != null) {
+                    val playingMusic = MusicList.items.find { it.id == currentlyPlayingId }
+                    Text(
+                        text = "Sedang Memutar: ${playingMusic?.title}",
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
         items(MusicList.items) { item ->
-            MusicItem(music = item)
+            MusicItem(
+                music = item,
+                isPlaying = currentlyPlayingId == item.id,
+                isFavorite = favoriteIds.contains(item.id),
+                onPlayClick = {
+                    currentlyPlayingId = if (currentlyPlayingId == item.id) null else item.id
+                },
+                onFavoriteClick = {
+                    favoriteIds = if (favoriteIds.contains(item.id)) {
+                        favoriteIds - item.id
+                    } else {
+                        favoriteIds + item.id
+                    }
+                }
+            )
         }
     }
 }
 
 @Composable
-fun MusicItem(music: Music) {
+fun MusicItem(
+    music: Music,
+    isPlaying: Boolean,
+    isFavorite: Boolean,
+    onPlayClick: () -> Unit,
+    onFavoriteClick: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        colors = CardDefaults.cardColors(
+            containerColor = if (isPlaying) 
+                MaterialTheme.colorScheme.primaryContainer 
+            else 
+                MaterialTheme.colorScheme.surfaceVariant
+        )
     ) {
         Row(
             modifier = Modifier
@@ -84,14 +126,32 @@ fun MusicItem(music: Music) {
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Image(
-                painter = painterResource(id = music.imageRes),
-                contentDescription = music.title,
+            Box(
                 modifier = Modifier
-                    .size(85.dp)
-                    .clip(RoundedCornerShape(8.dp)),
-                contentScale = ContentScale.Crop
-            )
+                    .size(90.dp)
+                    .clip(RoundedCornerShape(8.dp))
+            ) {
+                Image(
+                    painter = painterResource(id = music.imageRes),
+                    contentDescription = music.title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+
+                IconButton(
+                    onClick = onFavoriteClick,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = "Favorite",
+                        tint = if (isFavorite) Color.Red else Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
             
             Spacer(modifier = Modifier.width(12.dp))
             
@@ -123,14 +183,23 @@ fun MusicItem(music: Music) {
                 )
                 
                 Button(
-                    onClick = { /* Aksi Play */ },
+                    onClick = onPlayClick,
                     modifier = Modifier
                         .height(30.dp)
                         .align(Alignment.End),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                    shape = RoundedCornerShape(6.dp)
+                    shape = RoundedCornerShape(6.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isPlaying) 
+                            MaterialTheme.colorScheme.error 
+                        else 
+                            MaterialTheme.colorScheme.primary
+                    )
                 ) {
-                    Text("Play", fontSize = 11.sp)
+                    Text(
+                        text = if (isPlaying) "Stop" else "Play", 
+                        fontSize = 11.sp
+                    )
                 }
             }
         }
