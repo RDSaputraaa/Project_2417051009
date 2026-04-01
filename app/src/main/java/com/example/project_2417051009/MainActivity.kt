@@ -62,7 +62,6 @@ fun MusicListScreen(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 16.dp)
     ) {
-        // Bagian Rekomendasi Populer (LazyRow)
         item {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
@@ -82,7 +81,6 @@ fun MusicListScreen(modifier: Modifier = Modifier) {
             }
         }
 
-        // Bagian Daftar Menu Lengkap (LazyColumn items)
         item {
             PaddingValues(horizontal = 16.dp)
             Text(
