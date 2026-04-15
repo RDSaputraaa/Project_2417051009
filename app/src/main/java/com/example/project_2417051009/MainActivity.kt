@@ -26,6 +26,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.example.project_2417051009.ui.theme.Project_2417051009Theme
 
 class MainActivity : ComponentActivity() {
@@ -36,16 +38,22 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             Project_2417051009Theme {
+                // SnackbarHostState untuk menampilkan Snackbar
+                val snackbarHostState = remember { SnackbarHostState() }
+                
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     topBar = {
                         CenterAlignedTopAppBar(
                             title = { Text("Relaxing Sounds", fontWeight = FontWeight.Bold) }
                         )
-                    }
+                    },
+                    // Menambahkan SnackbarHost ke dalam Scaffold
+                    snackbarHost = { SnackbarHost(snackbarHostState) }
                 ) { innerPadding ->
                     MusicListScreen(
-                        modifier = Modifier.padding(innerPadding)
+                        modifier = Modifier.padding(innerPadding),
+                        snackbarHostState = snackbarHostState
                     )
                 }
             }
@@ -54,14 +62,15 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MusicListScreen(modifier: Modifier = Modifier) {
-    var currentlyPlayingId by remember { mutableStateOf<Int?>(null) }
+fun MusicListScreen(modifier: Modifier = Modifier, snackbarHostState: SnackbarHostState) {
     var favoriteIds by remember { mutableStateOf(setOf<Int>()) }
+    val scope = rememberCoroutineScope()
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 16.dp)
     ) {
+        // Bagian Rekomendasi Populer
         item {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
@@ -82,7 +91,6 @@ fun MusicListScreen(modifier: Modifier = Modifier) {
         }
 
         item {
-            PaddingValues(horizontal = 16.dp)
             Text(
                 text = "Daftar Menu Lengkap",
                 style = MaterialTheme.typography.titleLarge,
@@ -95,10 +103,13 @@ fun MusicListScreen(modifier: Modifier = Modifier) {
             Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
                 MusicItem(
                     music = item,
-                    isPlaying = currentlyPlayingId == item.id,
                     isFavorite = favoriteIds.contains(item.id),
-                    onPlayClick = {
-                        currentlyPlayingId = if (currentlyPlayingId == item.id) null else item.id
+                    onOrderClick = {
+                        // Implementasi Coroutine saat tombol diklik
+                        scope.launch {
+                            // Menampilkan snackbar setelah proses delay (disimulasikan di dalam MusicItem)
+                            snackbarHostState.showSnackbar("Pesanan ${item.title} berhasil diproses!")
+                        }
                     },
                     onFavoriteClick = {
                         favoriteIds = if (favoriteIds.contains(item.id)) {
@@ -137,7 +148,7 @@ fun PopularMusicItem(music: Music) {
                     maxLines = 1
                 )
                 Text(
-                    text = music.duration,
+                    text = "Rp 10000",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -149,18 +160,19 @@ fun PopularMusicItem(music: Music) {
 @Composable
 fun MusicItem(
     music: Music,
-    isPlaying: Boolean,
     isFavorite: Boolean,
-    onPlayClick: () -> Unit,
+    onOrderClick: () -> Unit,
     onFavoriteClick: () -> Unit
 ) {
+    // State Loading untuk simulasi proses Asynchronous
+    var isLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.Black
-        )
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column {
             Box(
@@ -190,36 +202,68 @@ fun MusicItem(
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     text = music.title,
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = Color.Black
                 )
                 Text(
-                    text = "Suara Alam",
+                    text = "Deskripsi Produk",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.LightGray
+                    color = Color.Gray
                 )
                 Text(
-                    text = "Durasi: ${music.duration}",
+                    text = "Harga: Rp 10000",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.LightGray,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(top = 4.dp)
                 )
                 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 
+                // Tombol Pesan Sekarang dengan Kondisi Loading
                 Button(
-                    onClick = onPlayClick,
+                    onClick = {
+                        scope.launch {
+                            isLoading = true
+                            delay(2000) // Simulasi proses loading selama 2 detik
+                            isLoading = false
+                            onOrderClick() // Panggil feedback snackbar
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    enabled = !isLoading, // Button disable saat loading
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isLoading) Color.LightGray else MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    if (isLoading) {
+                        // Menampilkan CircularProgressIndicator saat proses berlangsung
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Memproses...", color = Color.White)
+                    } else {
+                        Text("Pesan Sekarang", color = Color.White)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Tombol Kembali (Opsional sesuai gambar)
+                Button(
+                    onClick = { /* Aksi Kembali */ },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(20.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isPlaying) Color.Gray else Color(0xFFD1C4E9) // Ungu muda
+                        containerColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
-                    Text(
-                        text = if (isPlaying) "Berhenti" else "Pesan Sekarang", 
-                        color = Color.Black
-                    )
+                    Text("Kembali", color = Color.White)
                 }
             }
         }
